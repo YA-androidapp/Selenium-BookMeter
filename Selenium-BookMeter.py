@@ -15,12 +15,14 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.firefox.options import Options
 # import urllib.request
 
 
 # const
 user = '888888'
-url = 'https://bookmeter.com/users/'+user+'/books/read'
+host = 'https://bookmeter.com'
+url = host+'/users/'+user+'/books/read'
 
 cd = os.path.expanduser('~\\OneDrive\\ドキュメント\\works\\Python\\Sele\\Sele-BookMeter')
 # cd = os.path.dirname(os.path.abspath(__file__))
@@ -38,6 +40,10 @@ def get_source(url):
     URLを指定してHTMLソースを取得
     動的に生成されたソースを取るためにSeleniumを使用
     '''
+
+    if url.startswith("/"):
+        url = host + url
+
     # headers = { "User-Agent" :  "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:54.0) Gecko/20100101 Firefox/54.0" }
     # req = urllib.request.Request(url, None, headers)
     # request = urllib.request.urlopen(req)
@@ -54,9 +60,19 @@ def get_source(url):
 
 # Seleniumを起動
 # fox = webdriver.Firefox()
-binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe')
-fox = webdriver.Firefox(firefox_binary=binary)
-
+# options = Options()
+# options.set_headless(Options.headless)
+# geckodriver_path = "C:\\geckodriver\\geckodriver.exe"
+# fox = webdriver.Firefox(executable_path=geckodriver_path, options=options)
+#
+from selenium.webdriver import Firefox
+firefox_path='C:\\geckodriver\\geckodriver.exe'
+options = Options()
+options.add_argument('-headless')
+binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox ESR\\firefox.exe')
+fp = webdriver.FirefoxProfile()
+fox = Firefox(executable_path=firefox_path, firefox_profile=fp, firefox_options=options) # , firefox_binary=binary)
+    
 fox.set_window_size(1280, 240)
 
 # パース
@@ -70,17 +86,29 @@ lastpage = int(soup.find('a', class_='bm-pagination__link', text=re.compile('最
 
 # 本のタイトルを取得して、リストに追加
 list_title = []
+list_isbn = []
 
 url_sub = url
 for p in range(lastpage):
     print(str(int(100*(p+1)/lastpage))+'%') # 進捗状況
     print('p:'+str(p)+' url_sub:'+url_sub)
     
-    imgs = soup.select('img.cover__image')
-    for img in imgs:
+    items = soup.select('div.thumbnail__cover')
+    for item in items:
+        print(item)
+        img = item.img
+        print(img)
         title = img.get('alt')
         print(title)
         list_title.append(title)
+
+        #a = item.find('a')
+        #uri = a.get("href")
+        #print(uri)
+        #soupsub = bs4.BeautifulSoup(get_source(uri), "lxml")
+        #print(soupsub)
+        #soupsub.find_all('') # TODO
+        #list_isbn.append(isbn)
         
     if p == lastpage:
         break
