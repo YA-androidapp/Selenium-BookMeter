@@ -161,11 +161,11 @@ except:
 
 
 # リストを整形
-list_title.sort()
-list_title.reverse()
+# list_title.sort()
+# list_title.reverse()
 
 
 # 出力
-print('\n\n\n\n')
 with open(listfile_path, 'a') as file:
-    file.write('\n'.join(list_title))
+    for index in range(len(list_title)):
+        file.write((list_title[index]) + '\t' + (list_isbn[index]))
