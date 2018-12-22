@@ -168,4 +168,4 @@ except:
 # 出力
 with open(listfile_path, 'a') as file:
     for index in range(len(list_title)):
-        file.write((list_title[index]) + '\t' + (list_isbn[index]))
+        file.write((list_title[index]) + '\t' + (list_isbn[index]) + '\n')
