@@ -4,27 +4,28 @@
 # 読書メーターのユーザーページから、読んだ本のタイトル一覧を取得する
 ######################################################################
 
-import bs4
-# import chardet
+from bs4 import BeautifulSoup  # pip install beautifulsoup4 && pip install lxml
 import datetime
 import os
 import re
 import time
-from selenium import webdriver
+from selenium import webdriver  # pip install selenium
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.firefox.options import Options
-# import urllib.request
 
 
 # const
 user = '888888'
-host = 'https://bookmeter.com'
-url = host+'/users/'+user+'/books/read'
+hostbm = 'https://bookmeter.com'
+url = hostbm+'/users/'+user+'/books/read'
+hosthm = 'https://www.hmv.co.jp'
 
-cd = os.path.expanduser('~\\OneDrive\\ドキュメント\\works\\Python\\Sele\\Sele-BookMeter')
+cd = os.path.expanduser(
+    '~\\OneDrive\\ドキュメント\\works\\Python\\Sele\\Sele-BookMeter'
+)
 # cd = os.path.dirname(os.path.abspath(__file__))
 now = datetime.datetime.now()
 listfile_name = 'list_{0:%Y%m%d%H%M%S}.txt'.format(now)
@@ -41,83 +42,114 @@ def get_source(url):
     動的に生成されたソースを取るためにSeleniumを使用
     '''
 
-    if url.startswith("/"):
-        url = host + url
+    if url.startswith('/'):
+        url = hostbm + url
 
-    # headers = { "User-Agent" :  "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:54.0) Gecko/20100101 Firefox/54.0" }
-    # req = urllib.request.Request(url, None, headers)
-    # request = urllib.request.urlopen(req)
-    # html_post = request.read()
-    # guess = chardet.detect(html_post)
-    # html_post = html_post.decode(guess['encoding'])
     global fox
     fox.get(url)
-    WebDriverWait(fox, 10).until(
-        EC.presence_of_element_located((By.CLASS_NAME, 'bm-pagination-notice')))
+    if(url.startswith(hostbm)):
+        WebDriverWait(fox, 60).until(
+            EC.presence_of_element_located(
+                (By.CLASS_NAME, 'bm-pagination-notice')
+            )
+        )
+
+    # if(url.startswith(hosthm)):
+    #     WebDriverWait(fox, 60).until(
+    #         EC.presence_of_element_located(
+    #             (By.CLASS_NAME, 'rights')
+    #         )
+    #     )
+
     html_post = fox.page_source
     return(html_post)
 
 
 # Seleniumを起動
-# fox = webdriver.Firefox()
-# options = Options()
-# options.set_headless(Options.headless)
-# geckodriver_path = "C:\\geckodriver\\geckodriver.exe"
-# fox = webdriver.Firefox(executable_path=geckodriver_path, options=options)
-#
 from selenium.webdriver import Firefox
-firefox_path='C:\\geckodriver\\geckodriver.exe'
+binary = 'C:\\Program Files\\Mozilla Firefox ESR\\firefox.exe'
+binary = 'C:\\Program Files\\Mozilla Firefox\\firefox.exe'
+
+# conda install -c conda-forge geckodriver
 options = Options()
-options.add_argument('-headless')
-binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox ESR\\firefox.exe')
-fp = webdriver.FirefoxProfile()
-fox = Firefox(executable_path=firefox_path, firefox_profile=fp, firefox_options=options) # , firefox_binary=binary)
-    
+options.binary_location = binary
+# options.add_argument('-headless')
+fox = webdriver.Firefox(firefox_options=options)
+fox.set_page_load_timeout(60)
+print('fox')
+
 fox.set_window_size(1280, 240)
+print('set_window_size')
 
 # パース
-soup = bs4.BeautifulSoup(get_source(url), "lxml")
+soup = BeautifulSoup(get_source(url), features='lxml')
 html_post_title = soup.title.string
 print(html_post_title)
 
 # 最終ページを取得
-lastpage = int(soup.find('a', class_='bm-pagination__link', text=re.compile('最後')).get('href').split('read?page=')[1])
+lastpage = int(
+    soup.find(
+        'a',
+        class_='bm-pagination__link',
+        text=re.compile('最後')
+    ).get('href').split('read?page=')[1]
+
+
+)
 
 
 # 本のタイトルを取得して、リストに追加
 list_title = []
 list_isbn = []
 
+isbnpattern = '([0-9]{13})'
+isbnpatternre = re.compile(isbnpattern)
+
 url_sub = url
 for p in range(lastpage):
-    print(str(int(100*(p+1)/lastpage))+'%') # 進捗状況
-    print('p:'+str(p)+' url_sub:'+url_sub)
-    
+    # 進捗状況
+    print(str(int(100*(p+1)/lastpage))+'%')  # , end='\t')
+    print('p:'+str(p), end='\t')
+    print(' url_sub:'+url_sub, end='\n')
+
     items = soup.select('div.thumbnail__cover')
     for item in items:
-        print(item)
-        img = item.img
-        print(img)
-        title = img.get('alt')
-        print(title)
-        list_title.append(title)
+        title = ''
+        isbn = ''
+        try:
+            img = item.img
+            title = img.get('alt')
 
-        #a = item.find('a')
-        #uri = a.get("href")
-        #print(uri)
-        #soupsub = bs4.BeautifulSoup(get_source(uri), "lxml")
-        #print(soupsub)
-        #soupsub.find_all('') # TODO
-        #list_isbn.append(isbn)
-        
+            a = item.find('a')
+            uri = a.get('href')
+            print(hostbm + uri, end='\t')
+            soupsub = BeautifulSoup(get_source(uri), features='lxml')
+            urihm = soupsub.find(
+                'li',
+                attrs={'class', 'shop-list__item shop-list__item--hmvbooks'}
+            ).find('a').get('href')
+            souphm = BeautifulSoup(get_source(urihm), features='lxml')
+            result = isbnpatternre.findall(souphm.title.text)
+            isbn = ''
+            if result:
+                isbn = result[0]
+            print(isbn, end='\n')
+        except:
+            pass
+        else:
+            list_title.append(title)
+            list_isbn.append(isbn)
+        finally:
+            print('', end='\n')
+
     if p == lastpage:
         break
-        
+
     url_sub = url + '?page=' + str(p+2)
     print('p:'+str(p)+' url_sub:'+url_sub)
     time.sleep(1)
-    
-    soup = bs4.BeautifulSoup(get_source(url_sub), "lxml")
+
+    soup = BeautifulSoup(get_source(url_sub), features='lxml')
 
 
 # 後片付け
@@ -134,5 +166,6 @@ list_title.reverse()
 
 
 # 出力
+print('\n\n\n\n')
 with open(listfile_path, 'a') as file:
-    file.write("\n".join(list_title))
+    file.write('\n'.join(list_title))
